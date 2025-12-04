@@ -17,6 +17,14 @@ import { GenerationMode } from './types';
 import TestCaseViewer from './components/TestCaseViewer';
 import MarkdownViewer from './components/MarkdownViewer';
 
+const STORAGE_KEY = 'kbw_gemini_api_key';
+const ENV_API_KEY =
+  (import.meta as any)?.env?.VITE_GEMINI_API_KEY ??
+  (import.meta as any)?.env?.VITE_API_KEY ??
+  (import.meta as any)?.env?.API_KEY ??
+  (typeof process !== 'undefined' ? process.env.API_KEY : '') ??
+  '';
+
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
@@ -26,6 +34,14 @@ function App() {
   const [mode, setMode] = useState<GenerationMode>(GenerationMode.TEST_CASES);
   const [error, setError] = useState<string | null>(null);
   const [customInstructions, setCustomInstructions] = useState("");
+  const [apiKey, setApiKey] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) return saved;
+    }
+    return ENV_API_KEY;
+  });
+  const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -33,6 +49,15 @@ function App() {
       if (videoSrc) URL.revokeObjectURL(videoSrc);
     };
   }, [videoSrc]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (apiKey) {
+      window.localStorage.setItem(STORAGE_KEY, apiKey);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  }, [apiKey]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -50,8 +75,9 @@ function App() {
 
   const handleGenerate = async () => {
     if (!file) return;
-    if (!process.env.API_KEY) {
-        setError("Missing API_KEY environment variable. Cannot contact Gemini.");
+    const resolvedKey = apiKey.trim();
+    if (!resolvedKey) {
+        setError("Please provide your Gemini API key to continue.");
         return;
     }
 
@@ -69,7 +95,7 @@ function App() {
 
       // 2. Send to Gemini
       const result = await generateContent(
-        process.env.API_KEY, 
+        resolvedKey, 
         frames, 
         mode,
         customInstructions
@@ -215,6 +241,31 @@ function App() {
                     User Guide
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Gemini API Key
+                </label>
+                <div className="flex rounded-lg border border-slate-200 focus-within:ring-1 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-colors">
+                  <input
+                    type={isApiKeyVisible ? "text" : "password"}
+                    className="flex-1 px-4 py-2.5 rounded-l-lg text-sm outline-none bg-transparent"
+                    placeholder="Enter your Gemini API key"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsApiKeyVisible((prev) => !prev)}
+                    className="px-4 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+                  >
+                    {isApiKeyVisible ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                    Stored locally in your browser and never sent anywhere else.
+                </p>
               </div>
 
               <div>
