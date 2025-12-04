@@ -1,0 +1,5 @@
+{
+  "name": "KB Writer and Test case generator",
+  "description": "An intelligent Knowledge Base assistant that generates comprehensive test cases and documentation from video inputs using Gemini 3 Pro.",
+  "requestFramePermissions": []
+}
